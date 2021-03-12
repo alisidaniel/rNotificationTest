@@ -18,8 +18,6 @@ import {
   PermissionsAndroid,
   TouchableOpacity,
 } from 'react-native';
-
-import {Header, Colors} from 'react-native/Libraries/NewAppScreen';
 import MapView, {
   Marker,
   AnimatedRegion,
@@ -27,6 +25,7 @@ import MapView, {
   PROVIDER_GOOGLE,
 } from 'react-native-maps';
 import haversine from 'haversine';
+import Geolocation from '@react-native-community/geolocation';
 
 const App: () => React$Node = () => {
   const LATITUDE_DELTA = 0.009;
@@ -41,7 +40,7 @@ const App: () => React$Node = () => {
   const [longitudeTop, setLongitudeTop] = React.useState(LONGITUDE);
   const [marker, setMarker] = React.useState();
 
-  const {coordinate} = React.useState(
+  const [coordinate, setCoordinate] = React.useState(
     new AnimatedRegion({
       latitude: LATITUDE,
       longitude: LONGITUDE,
@@ -55,7 +54,7 @@ const App: () => React$Node = () => {
       return haversine(prevLatLng, newLatLng) || 0;
     };
 
-    const watchID = navigator.geolocation.watchPosition(
+    const watchID = Geolocation.watchPosition(
       (position) => {
         const {latitude, longitude} = position.coords;
 
@@ -86,7 +85,7 @@ const App: () => React$Node = () => {
         distanceFilter: 10,
       },
     );
-    navigator.geolocation.clearWatch(watchID);
+    Geolocation.clearWatch(watchID);
   });
 
   const getMapRegion = () => ({
@@ -100,35 +99,28 @@ const App: () => React$Node = () => {
     <>
       <StatusBar barStyle="dark-content" />
       <SafeAreaView>
-        <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
-          style={styles.scrollView}>
-          <Header />
-          <View style={styles.container}>
-            <MapView
-              style={styles.map}
-              provider={PROVIDER_GOOGLE}
-              showUserLocation
-              followUserLocation
-              loadingEnabled
-              region={getMapRegion()}>
-              <Polyline coordinates={routeCoordinates} strokeWidth={5} />
-              <Marker.Animated
-                ref={(marker) => {
-                  setMarker(marker);
-                }}
-                coordinate={coordinate}
-              />
-            </MapView>
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity style={[styles.bubble, styles.button]}>
-                <Text style={styles.bottomBarContent}>
-                  {parseFloat(distanceTravelled).toFixed(2)} km
-                </Text>
-              </TouchableOpacity>
-            </View>
+        <View>
+          <Text>Hello</Text>
+          <MapView
+            provider={PROVIDER_GOOGLE}
+            showUserLocation
+            followUserLocation
+            loadingEnabled
+            region={getMapRegion()}>
+            <Polyline coordinates={routeCoordinates} strokeWidth={5} />
+            <Marker.Animated
+              ref={(marker) => {
+                setMarker(marker);
+              }}
+              coordinate={coordinate}
+            />
+          </MapView>
+          <View>
+            <TouchableOpacity>
+              <Text>{parseFloat(distanceTravelled).toFixed(2)} km</Text>
+            </TouchableOpacity>
           </View>
-        </ScrollView>
+        </View>
       </SafeAreaView>
     </>
   );
@@ -136,34 +128,7 @@ const App: () => React$Node = () => {
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  bubble: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 20,
-  },
-  latlng: {
-    width: 200,
-    alignItems: 'stretch',
-  },
-  button: {
-    width: 80,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    marginHorizontal: 10,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    marginVertical: 20,
-    backgroundColor: 'transparent',
+    textAlign: 'center',
   },
 });
 
