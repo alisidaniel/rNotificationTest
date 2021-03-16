@@ -6,129 +6,104 @@
  * @flow strict-local
  */
 
-import React, {useEffect} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
   SafeAreaView,
   StyleSheet,
-  ScrollView,
   View,
-  Text,
-  Platform,
-  StatusBar,
   PermissionsAndroid,
+  Dimensions,
   TouchableOpacity,
 } from 'react-native';
-import MapView, {
-  Marker,
-  AnimatedRegion,
-  Polyline,
-  PROVIDER_GOOGLE,
-} from 'react-native-maps';
-import haversine from 'haversine';
+import MapView from 'react-native-maps';
+import MapViewDirections from 'react-native-maps-directions';
 import Geolocation from '@react-native-community/geolocation';
 
+const {width, height} = Dimensions.get('window');
+const GOOGLE_MAPS_APIKEY = 'AIzaSyARRqg-uBKLYXx1ftOb8mTnR3xpphbO9mU';
+
 const App: () => React$Node = () => {
-  const LATITUDE_DELTA = 0.009;
-  const LONGITUDE_DELTA = 0.009;
-  const LATITUDE = 37.78825;
-  const LONGITUDE = -122.4324;
 
-  const [routeCoordinates, setRouteCoordinates] = React.useState([]);
-  const [distanceTravelled, setDistanceTravelled] = React.useState(0);
-  const [prevLatLng, setPrevLatLng] = React.useState({});
-  const [latitudeTop, setLatitudeTop] = React.useState(LATITUDE);
-  const [longitudeTop, setLongitudeTop] = React.useState(LONGITUDE);
-  const [marker, setMarker] = React.useState();
+  const mapView = useRef();
 
-  const [coordinate, setCoordinate] = React.useState(
-    new AnimatedRegion({
-      latitude: LATITUDE,
-      longitude: LONGITUDE,
-      latitudeDelta: 0,
-      longitudeDelta: 0,
-    }),
-  );
+  const [coordinates, setCoordinates] = useState([
+    {
+      latitude: 0, // Origin
+      longitude: 0,
+    },
+    {
+      latitude: 0, // Destination
+      longitude: 0,
+    },
+  ]);
 
   useEffect(() => {
-    const calcDistance = (newLatLng) => {
-      return haversine(prevLatLng, newLatLng) || 0;
-    };
-
-    const watchID = Geolocation.watchPosition(
-      (position) => {
-        const {latitude, longitude} = position.coords;
-
-        const newCoordinate = {
-          latitude,
-          longitude,
-        };
-
-        if (Platform.OS === 'android') {
-          if (marker) {
-            marker._component.animateMarkerToCoordinate(newCoordinate, 500);
-          }
-        } else {
-          coordinate.timing(newCoordinate).start();
-        }
-
-        setLongitudeTop(longitude);
-        setLatitudeTop(latitude);
-        setRouteCoordinates(routeCoordinates.concat([newCoordinate]));
-        setDistanceTravelled(distanceTravelled + calcDistance(newCoordinate));
-        setPrevLatLng(newCoordinate);
-      },
-      (error) => console.log(error),
+    Geolocation.getCurrentPosition((info) => console.log(info));
+    Geolocation.watchPosition((position) => {
+      const {latitude, longitude} = position.coords;
+      console.log('go here', latitude, longitude);
+      setCoordinates([    
       {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 1000,
-        distanceFilter: 10,
+        latitude: latitude, // Origin
+        longitude: longitude,
       },
-    );
-    Geolocation.clearWatch(watchID);
-  });
-
-  const getMapRegion = () => ({
-    latitude: latitudeTop,
-    longitude: longitudeTop,
-    latitudeDelta: LATITUDE_DELTA,
-    longitudeDelta: LONGITUDE_DELTA,
-  });
+      {
+        latitude: 4.80370799, // Destination
+        longitude: 6.9904214,
+      },]);
+      console.log("new coordinates", coordinates);
+    });
+  }, []);
 
   return (
     <>
-      <StatusBar barStyle="dark-content" />
-      <SafeAreaView>
-        <View>
-          <Text>Hello</Text>
-          <MapView
-            provider={PROVIDER_GOOGLE}
-            showUserLocation
-            followUserLocation
-            loadingEnabled
-            region={getMapRegion()}>
-            <Polyline coordinates={routeCoordinates} strokeWidth={5} />
-            <Marker.Animated
-              ref={(marker) => {
-                setMarker(marker);
-              }}
+      <View style={styles.container}>
+        <MapView style={{flex: 1, width: '100%'}} ref={mapView}>
+          {coordinates.map((coordinate, index) => (
+            <MapView.Marker
+              key={`coordinate_${index}`}
               coordinate={coordinate}
             />
-          </MapView>
-          <View>
-            <TouchableOpacity>
-              <Text>{parseFloat(distanceTravelled).toFixed(2)} km</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </SafeAreaView>
+          ))}
+          <MapViewDirections
+            apikey={GOOGLE_MAPS_APIKEY}
+            origin={coordinates[0]}
+            waypoints={coordinates}
+            destination={coordinates[coordinates.length - 1]}
+            strokeWidth={3}
+            strokeColor="hotpink"
+            optimizeWaypoints
+            onStart={(params) => {
+              console.log(
+                `Started routing between "${params.origin}" and "${params.destination}"`,
+              );
+            }}
+            onReady={(result) => {
+              console.log(`routing complete, distance is: ${result.distance}`);
+              mapView.current.fitToCoordinates(result.coordinates, {
+                edgePadding: {
+                  right: width / 20,
+                  bottom: height / 20,
+                  left: width / 20,
+                  top: height / 20,
+                },
+              });
+            }}
+            onError={(errorMessage) => {
+              console.log(`GOT AN ERROR: ${errorMessage}`);
+            }}
+          />
+        </MapView>
+      </View>
     </>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    textAlign: 'center',
+    flex: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
   },
 });
 
